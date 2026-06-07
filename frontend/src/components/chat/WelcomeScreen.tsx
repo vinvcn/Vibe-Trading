@@ -1,4 +1,5 @@
 ﻿import { Bot, TrendingUp, Globe, Sparkles, Users, UserCircle2, NotebookPen, Landmark } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 interface Example {
   title: string;
@@ -173,6 +174,7 @@ interface Props {
 }
 
 export function WelcomeScreen({ onExample }: Props) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 text-center">
       {/* Header */}
@@ -183,10 +185,10 @@ export function WelcomeScreen({ onExample }: Props) {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Vibe-Trading</h2>
           <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto leading-relaxed">
-            vibe trading with your professional financial agent team
+            {t("vibe trading with your professional financial agent team")}
           </p>
           <p className="text-sm text-muted-foreground mt-2 max-w-md leading-relaxed mx-auto">
-            Describe a trading strategy to get started.
+            {t("Describe a trading strategy to get started.")}
           </p>
         </div>
       </div>
@@ -198,20 +200,20 @@ export function WelcomeScreen({ onExample }: Props) {
             key={chip}
             className="px-2.5 py-1 text-xs rounded-full border border-border/60 text-muted-foreground bg-muted/30"
           >
-            {chip}
+            {t(chip)}
           </span>
         ))}
       </div>
 
       {/* Example categories grid */}
       <div className="w-full max-w-2xl text-left space-y-4">
-        <p className="text-xs text-muted-foreground px-1">Try an example:</p>
+        <p className="text-xs text-muted-foreground px-1">{t("Try an example:")}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {CATEGORIES.map((cat) => (
             <div key={cat.label} className="space-y-2">
               <div className={`flex items-center gap-1.5 text-xs font-medium px-1 ${cat.color.split(" ").filter(c => c.startsWith("text-")).join(" ")}`}>
                 {cat.icon}
-                <span>{cat.label}</span>
+                <span>{t(cat.label)}</span>
               </div>
               <div className="space-y-1.5">
                 {cat.examples.map((ex) => (
@@ -221,10 +223,10 @@ export function WelcomeScreen({ onExample }: Props) {
                     className={`block w-full text-left px-3 py-2.5 rounded-xl border transition-colors ${cat.color}`}
                   >
                     <span className="text-sm font-medium text-foreground leading-snug">
-                      {ex.title}
+                      {t(ex.title)}
                     </span>
                     <span className="block text-xs text-muted-foreground mt-0.5 leading-snug">
-                      {ex.desc}
+                      {t(ex.desc)}
                     </span>
                   </button>
                 ))}

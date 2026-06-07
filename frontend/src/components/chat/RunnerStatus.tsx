@@ -19,6 +19,7 @@ import {
   type LiveMandateLimits,
   type LiveAuthorizeResponse,
 } from "@/lib/api";
+import { useI18n } from "@/i18n";
 
 interface Props {
   /** Shared `GET /live/status` snapshot, polled once by the parent (Agent.tsx).
@@ -37,26 +38,26 @@ function formatUsd(value: number | undefined): string {
   return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-function formatRelative(value: string | number | null | undefined): string {
-  if (value == null || value === "") return "never";
+function formatRelative(value: string | number | null | undefined, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  if (value == null || value === "") return t("never");
   const then = typeof value === "number"
     ? (value < 1_000_000_000_000 ? value * 1000 : value)
     : new Date(value).getTime();
-  if (!Number.isFinite(then)) return "unknown";
+  if (!Number.isFinite(then)) return t("unknown");
   const deltaSec = Math.round((Date.now() - then) / 1000);
-  if (deltaSec < 0) return "just now";
-  if (deltaSec < 60) return `${deltaSec}s ago`;
-  if (deltaSec < 3600) return `${Math.floor(deltaSec / 60)}m ago`;
-  if (deltaSec < 86_400) return `${Math.floor(deltaSec / 3600)}h ago`;
-  return `${Math.floor(deltaSec / 86_400)}d ago`;
+  if (deltaSec < 0) return t("just now");
+  if (deltaSec < 60) return t("{count}s ago", { count: deltaSec });
+  if (deltaSec < 3600) return t("{count}m ago", { count: Math.floor(deltaSec / 60) });
+  if (deltaSec < 86_400) return t("{count}h ago", { count: Math.floor(deltaSec / 3600) });
+  return t("{count}d ago", { count: Math.floor(deltaSec / 86_400) });
 }
 
-function formatCountdown(iso: string | undefined): { label: string; expired: boolean; soon: boolean } {
+function formatCountdown(iso: string | undefined, t: (key: string) => string): { label: string; expired: boolean; soon: boolean } {
   if (!iso) return { label: "—", expired: false, soon: false };
   const target = new Date(iso).getTime();
-  if (!Number.isFinite(target)) return { label: "unknown", expired: false, soon: false };
+  if (!Number.isFinite(target)) return { label: t("unknown"), expired: false, soon: false };
   const deltaSec = Math.round((target - Date.now()) / 1000);
-  if (deltaSec <= 0) return { label: "expired", expired: true, soon: false };
+  if (deltaSec <= 0) return { label: t("expired"), expired: true, soon: false };
   const days = Math.floor(deltaSec / 86_400);
   const hours = Math.floor((deltaSec % 86_400) / 3600);
   const minutes = Math.floor((deltaSec % 3600) / 60);
@@ -75,10 +76,6 @@ function summarizeLimits(limits: LiveMandateLimits | undefined): string {
   return parts.join(" · ");
 }
 
-function fallbackAuthorizeInstruction(): string {
-  return "Run `vibe-trading connector list`, choose the broker profile, then run `vibe-trading connector authorize <profile>` from the desktop session that will hold the broker connection.";
-}
-
 function BrokerRow({
   broker,
   halted,
@@ -88,6 +85,7 @@ function BrokerRow({
   halted: boolean;
   onRefresh: () => void;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [authorizeHint, setAuthorizeHint] = useState<LiveAuthorizeResponse | null>(null);
   const [authorizeFailed, setAuthorizeFailed] = useState(false);
@@ -95,10 +93,10 @@ function BrokerRow({
   const authorized = broker.auth.oauth_token_present;
   const runnerAlive = broker.runner?.alive ?? false;
   const mandate = broker.mandate ?? null;
-  const countdown = formatCountdown(mandate?.expires_at);
+  const countdown = formatCountdown(mandate?.expires_at, t);
   const authorizeInstruction = authorizeHint?.instruction
-    ?? (authorizeFailed ? fallbackAuthorizeInstruction() : "Loading connector authorization instructions...");
-  const authorizeNote = "The connector channel stays read-only until OAuth succeeds and a mandate is committed.";
+    ?? (authorizeFailed ? t("Run `vibe-trading connector list`, choose the broker profile, then run `vibe-trading connector authorize <profile>` from the desktop session that will hold the broker connection.") : t("Loading connector authorization instructions..."));
+  const authorizeNote = t("The connector channel stays read-only until OAuth succeeds and a mandate is committed.");
 
   useEffect(() => {
     let cancelled = false;
@@ -123,18 +121,18 @@ function BrokerRow({
     try {
       if (runnerAlive) {
         await api.stopLiveRunner(brokerKey);
-        toast.success(`Runner stopped for ${brokerKey}`);
+        toast.success(t("Runner stopped for {broker}", { broker: brokerKey }));
       } else {
         await api.startLiveRunner(brokerKey);
-        toast.success(`Runner started for ${brokerKey}`);
+        toast.success(t("Runner started for {broker}", { broker: brokerKey }));
       }
       onRefresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Runner control failed.");
+      toast.error(error instanceof Error ? error.message : t("Runner control failed."));
     } finally {
       setBusy(false);
     }
-  }, [brokerKey, busy, runnerAlive, onRefresh]);
+  }, [brokerKey, busy, runnerAlive, onRefresh, t]);
 
   return (
     <div className="grid gap-2 rounded-lg border bg-muted/20 p-2.5">
@@ -144,12 +142,12 @@ function BrokerRow({
           {authorized ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
               <ShieldCheck className="h-2.5 w-2.5" />
-              Authorized
+              {t("Authorized")}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               <CircleSlash className="h-2.5 w-2.5" />
-              Not connected
+              {t("Not connected")}
             </span>
           )}
         </div>
@@ -162,7 +160,7 @@ function BrokerRow({
         <div className="grid gap-1.5 rounded-md border border-dashed border-primary/30 bg-primary/5 p-2">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
             <PlugZap className="h-3 w-3 shrink-0" />
-            Connect this profile to enable connector runtime
+            {t("Connect this profile to enable connector runtime")}
           </div>
           <p className="text-[10px] leading-relaxed text-muted-foreground">
             {authorizeInstruction}
@@ -179,19 +177,19 @@ function BrokerRow({
             <div className="rounded-md border bg-background/60 p-2">
               <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <CircleDot className={["h-2.5 w-2.5", runnerAlive ? "text-emerald-500" : "text-muted-foreground"].join(" ")} />
-                Runner
+                {t("Runner")}
               </div>
               <div className={["mt-0.5 text-xs font-semibold", runnerAlive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"].join(" ")}>
-                {runnerAlive ? "Running" : "Stopped"}
+                {runnerAlive ? t("Running") : t("Stopped")}
               </div>
             </div>
             <div className="rounded-md border bg-background/60 p-2">
               <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <Activity className="h-2.5 w-2.5" />
-                Last tick
+                {t("Last tick")}
               </div>
               <div className="mt-0.5 text-xs font-medium text-foreground">
-                {formatRelative(broker.runner?.last_tick)}
+                {formatRelative(broker.runner?.last_tick, t)}
               </div>
             </div>
           </div>
@@ -201,7 +199,7 @@ function BrokerRow({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <ShieldCheck className="h-2.5 w-2.5" />
-                  Active mandate
+                  {t("Active mandate")}
                 </div>
                 {mandate.expires_at && (
                   <span
@@ -213,20 +211,20 @@ function BrokerRow({
                           ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                           : "bg-muted text-muted-foreground",
                     ].join(" ")}
-                    title={`Expires ${new Date(mandate.expires_at).toLocaleString()}`}
+                    title={`${t("expires {date}", { date: new Date(mandate.expires_at).toLocaleString() })}`}
                   >
                     <Clock className="h-2.5 w-2.5" />
-                    {countdown.expired ? "expired" : `expires in ${countdown.label}`}
+                    {countdown.expired ? t("expired") : t("expires in {time}", { time: countdown.label })}
                   </span>
                 )}
               </div>
               <div className="mt-0.5 font-mono text-[11px] text-foreground">
-                {summarizeLimits(mandate.limits) || "limits unavailable"}
+                {summarizeLimits(mandate.limits) || t("limits unavailable")}
               </div>
             </div>
           ) : (
             <div className="rounded-md border border-dashed bg-background/40 p-2 text-[10px] text-muted-foreground">
-              No active mandate. Ask the agent to propose one, then commit it before starting the connector runtime.
+              {t("No active mandate. Ask the agent to propose one, then commit it before starting the connector runtime.")}
             </div>
           )}
 
@@ -234,11 +232,11 @@ function BrokerRow({
             {halted ? (
               <span className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive">
                 <OctagonX className="h-3 w-3" />
-                Halted — runner controls disabled
+                {t("Halted — runner controls disabled")}
               </span>
             ) : (
               <span className="text-[10px] text-muted-foreground">
-                {runnerAlive ? "Runtime active inside mandate" : "Idle"}
+                {runnerAlive ? t("Runtime active inside mandate") : t("Idle")}
               </span>
             )}
             <button
@@ -251,10 +249,10 @@ function BrokerRow({
                   ? "border-destructive/40 text-destructive hover:bg-destructive/10"
                   : "border-primary/40 text-primary hover:bg-primary/10",
               ].join(" ")}
-              title={runnerAlive ? "Stop the persistent runner" : "Start the persistent runner"}
+              title={runnerAlive ? t("Stop the persistent runner") : t("Start the persistent runner")}
             >
               {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Power className="h-3 w-3" />}
-              {runnerAlive ? "Stop runner" : "Start runner"}
+              {runnerAlive ? t("Stop runner") : t("Start runner")}
             </button>
           </div>
         </>
@@ -275,6 +273,7 @@ function BrokerRow({
  * `api.stopLiveRunner`), never chat messages. Collapses to a compact toggle.
  */
 export const RunnerStatus = memo(function RunnerStatus({ status, unavailable, halted, onRefresh }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   if (unavailable) return null;
@@ -290,24 +289,24 @@ export const RunnerStatus = memo(function RunnerStatus({ status, unavailable, ha
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="inline-flex max-w-full items-center gap-1.5 justify-self-start rounded-lg bg-primary/10 px-2.5 py-1 text-left text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-        aria-label="Connector runtime status"
+        aria-label={t("Connector runtime status")}
         aria-expanded={open}
       >
         <Activity className="h-3 w-3 shrink-0" />
-        <span className="shrink-0">Connector runtime</span>
+        <span className="shrink-0">{t("Connector runtime")}</span>
         <span className="truncate text-muted-foreground">
-          {authorizedCount > 0 ? `${authorizedCount} connected` : "no connector connected"}
+          {authorizedCount > 0 ? t("{count} connected", { count: authorizedCount }) : t("no connector connected")}
         </span>
         {anyRunning && !isHalted && (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
             <CircleDot className="h-2.5 w-2.5" />
-            running
+            {t("running")}
           </span>
         )}
         {isHalted && (
           <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
             <OctagonX className="h-2.5 w-2.5" />
-            halted
+            {t("halted")}
           </span>
         )}
         <ChevronDown className={["h-3 w-3 shrink-0 transition-transform", open ? "rotate-180" : ""].join(" ")} aria-hidden="true" />

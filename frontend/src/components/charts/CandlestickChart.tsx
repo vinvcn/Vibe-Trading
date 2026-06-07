@@ -7,6 +7,7 @@ import { getChartTheme } from "@/lib/chart-theme";
 import { abbreviateNum } from "@/lib/formatters";
 import { echarts, CHART_GROUP, connectCharts } from "@/lib/echarts";
 import { useDarkMode } from "@/hooks/useDarkMode";
+import { useI18n } from "@/i18n";
 
 type Sub = "vol" | "macd" | "rsi" | "kdj";
 type Range = "1M" | "3M" | "6M" | "1Y" | "ALL";
@@ -40,6 +41,7 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
   const [overlays, setOverlays] = useState<Set<Overlay>>(new Set(["ma5", "ma20"]));
   const [showMenu, setShowMenu] = useState(false);
   const { dark } = useDarkMode();
+  const { t } = useI18n();
 
   const toggleOverlay = useCallback((id: Overlay) => {
     setOverlays(prev => {
@@ -101,7 +103,8 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
     const chart = chartRef.current;
     if (!chart || data.length === 0) return;
 
-    const t = getChartTheme();
+    const theme = getChartTheme();
+    const volumeLabel = t("Volume");
     const { dates, closes, opens, candle } = baseData;
 
     // Overlay series
@@ -130,9 +133,9 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
     if (overlays.has("boll")) {
       const boll = indicatorCache.boll;
       overlaySeries.push(
-        { name: "BOLL+", type: "line", data: boll.upper, xAxisIndex: 0, yAxisIndex: 0, symbol: "none", lineStyle: { color: t.bollColor, width: 0.8, type: "dashed" } },
-        { name: "BOLL", type: "line", data: boll.mid, xAxisIndex: 0, yAxisIndex: 0, symbol: "none", lineStyle: { color: t.bollColor, width: 1 } },
-        { name: "BOLL-", type: "line", data: boll.lower, xAxisIndex: 0, yAxisIndex: 0, symbol: "none", lineStyle: { color: t.bollColor, width: 0.8, type: "dashed" } },
+        { name: "BOLL+", type: "line", data: boll.upper, xAxisIndex: 0, yAxisIndex: 0, symbol: "none", lineStyle: { color: theme.bollColor, width: 0.8, type: "dashed" } },
+        { name: "BOLL", type: "line", data: boll.mid, xAxisIndex: 0, yAxisIndex: 0, symbol: "none", lineStyle: { color: theme.bollColor, width: 1 } },
+        { name: "BOLL-", type: "line", data: boll.lower, xAxisIndex: 0, yAxisIndex: 0, symbol: "none", lineStyle: { color: theme.bollColor, width: 0.8, type: "dashed" } },
       );
       legendNames.push("BOLL");
     }
@@ -142,43 +145,43 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
       coord: [m.time, m.price],
       value: m.side === "BUY" ? "B" : "S",
       name: [`${m.side} @ ${m.price}`, m.qty ? `Qty: ${m.qty}` : "", m.reason || ""].filter(Boolean).join("\n"),
-      itemStyle: { color: m.side === "BUY" ? t.upColor : t.downColor },
+      itemStyle: { color: m.side === "BUY" ? theme.upColor : theme.downColor },
       label: { color: "#fff", fontSize: 10, fontWeight: "bold" as const },
     }));
 
     // Volume
     const vol = data.map((d, i) => ({
       value: d.volume,
-      itemStyle: { color: closes[i] >= opens[i] ? t.volumeUp : t.volumeDown },
+      itemStyle: { color: closes[i] >= opens[i] ? theme.volumeUp : theme.volumeDown },
     }));
 
     // Sub-chart
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let subSeries: any[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let subYAxis: any = { scale: true, gridIndex: 1, splitLine: { lineStyle: { color: t.gridColor } }, axisLabel: { color: t.textColor, fontSize: 10 } };
+    let subYAxis: any = { scale: true, gridIndex: 1, splitLine: { lineStyle: { color: theme.gridColor } }, axisLabel: { color: theme.textColor, fontSize: 10 } };
 
     if (sub === "vol") {
-      subSeries = [{ name: "Vol", type: "bar", data: vol, xAxisIndex: 1, yAxisIndex: 1 }];
+      subSeries = [{ name: volumeLabel, type: "bar", data: vol, xAxisIndex: 1, yAxisIndex: 1 }];
       subYAxis = { ...subYAxis, axisLabel: { ...subYAxis.axisLabel, formatter: (v: number) => abbreviateNum(v) } };
-      legendNames.push("Vol");
+      legendNames.push(volumeLabel);
     } else if (sub === "macd") {
       const m = indicatorCache.macd;
       subSeries = [
-        { name: "DIF", type: "line", data: m.dif, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: t.infoColor } },
-        { name: "DEA", type: "line", data: m.signal, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: t.warningColor } },
-        { name: "MACD", type: "bar", data: m.histogram.map(v => ({ value: v ?? 0, itemStyle: { color: (v ?? 0) >= 0 ? t.upColor : t.downColor } })), xAxisIndex: 1, yAxisIndex: 1 },
+        { name: "DIF", type: "line", data: m.dif, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: theme.infoColor } },
+        { name: "DEA", type: "line", data: m.signal, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: theme.warningColor } },
+        { name: "MACD", type: "bar", data: m.histogram.map(v => ({ value: v ?? 0, itemStyle: { color: (v ?? 0) >= 0 ? theme.upColor : theme.downColor } })), xAxisIndex: 1, yAxisIndex: 1 },
       ];
       legendNames.push("DIF", "DEA", "MACD");
     } else if (sub === "rsi") {
-      subSeries = [{ name: "RSI", type: "line", data: indicatorCache.rsi, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1.5, color: t.infoColor } }];
+      subSeries = [{ name: "RSI", type: "line", data: indicatorCache.rsi, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1.5, color: theme.infoColor } }];
       subYAxis = { ...subYAxis, min: 0, max: 100 };
       legendNames.push("RSI");
     } else {
       const kdj = indicatorCache.kdj;
       subSeries = [
-        { name: "%K", type: "line", data: kdj.k, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: t.infoColor } },
-        { name: "%D", type: "line", data: kdj.d, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: t.warningColor } },
+        { name: "%K", type: "line", data: kdj.k, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: theme.infoColor } },
+        { name: "%D", type: "line", data: kdj.d, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: theme.warningColor } },
         { name: "%J", type: "line", data: kdj.j, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", lineStyle: { width: 1, color: "#a855f7" } },
       ];
       legendNames.push("%K", "%D", "%J");
@@ -197,8 +200,8 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
       backgroundColor: "transparent",
       tooltip: {
         trigger: "axis", axisPointer: { type: "cross" },
-        backgroundColor: t.tooltipBg, borderColor: t.tooltipBorder,
-        textStyle: { color: t.tooltipText, fontSize: 11 },
+        backgroundColor: theme.tooltipBg, borderColor: theme.tooltipBorder,
+        textStyle: { color: theme.tooltipText, fontSize: 11 },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         formatter: (params: any) => {
           if (!Array.isArray(params) || !params.length) return "";
@@ -208,11 +211,11 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
               const [open, close, low, high] = p.value;
               const chg = close - open;
               const pct = open ? ((chg / open) * 100).toFixed(2) : "0.00";
-              const clr = chg >= 0 ? t.upColor : t.downColor;
-              html += `<br/>O: ${open.toFixed(2)}&nbsp; H: ${high.toFixed(2)}`;
-              html += `<br/>L: ${low.toFixed(2)}&nbsp; C: <span style="color:${clr}"><b>${close.toFixed(2)}</b> ${chg >= 0 ? "+" : ""}${chg.toFixed(2)} (${chg >= 0 ? "+" : ""}${pct}%)</span>`;
-            } else if (p.seriesName === "Vol") {
-              html += `<br/>Vol: ${abbreviateNum(Number(p.value))}`;
+              const clr = chg >= 0 ? theme.upColor : theme.downColor;
+              html += `<br/>${t("Open")}: ${open.toFixed(2)}&nbsp; ${t("High")}: ${high.toFixed(2)}`;
+              html += `<br/>${t("Low")}: ${low.toFixed(2)}&nbsp; ${t("Close")}: <span style="color:${clr}"><b>${close.toFixed(2)}</b> ${chg >= 0 ? "+" : ""}${chg.toFixed(2)} (${chg >= 0 ? "+" : ""}${pct}%)</span>`;
+            } else if (p.seriesName === volumeLabel) {
+              html += `<br/>${volumeLabel}: ${abbreviateNum(Number(p.value))}`;
             } else if (p.value != null) {
               html += `<br/>${p.marker} ${p.seriesName}: ${Number(p.value).toFixed(2)}`;
             }
@@ -221,20 +224,20 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
         },
       },
       toolbox: {
-        feature: { saveAsImage: { title: "Save" }, dataZoom: { title: { zoom: "Zoom", back: "Reset" } }, restore: { title: "Reset" } },
-        right: 8, top: 0, iconStyle: { borderColor: t.textColor },
+        feature: { saveAsImage: { title: t("Save") }, dataZoom: { title: { zoom: t("Zoom"), back: t("Reset") } }, restore: { title: t("Reset") } },
+        right: 8, top: 0, iconStyle: { borderColor: theme.textColor },
       },
-      legend: { data: legendNames, textStyle: { color: t.textColor, fontSize: 10 }, right: 80, top: 2, type: "scroll", itemWidth: 12, itemHeight: 8, itemGap: 8 },
+      legend: { data: legendNames, textStyle: { color: theme.textColor, fontSize: 10 }, right: 80, top: 2, type: "scroll", itemWidth: 12, itemHeight: 8, itemGap: 8 },
       grid: [
         { left: 8, right: 8, top: 36, height: "55%", containLabel: true },
         { left: 8, right: 8, top: "66%", height: "22%", containLabel: true },
       ],
       xAxis: [
-        { type: "category", data: dates, gridIndex: 0, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { color: t.textColor, fontSize: 10 }, boundaryGap: true },
-        { type: "category", data: dates, gridIndex: 1, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { show: false }, boundaryGap: true },
+        { type: "category", data: dates, gridIndex: 0, axisLine: { lineStyle: { color: theme.axisColor } }, axisLabel: { color: theme.textColor, fontSize: 10 }, boundaryGap: true },
+        { type: "category", data: dates, gridIndex: 1, axisLine: { lineStyle: { color: theme.axisColor } }, axisLabel: { show: false }, boundaryGap: true },
       ],
       yAxis: [
-        { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: t.gridColor } }, axisLabel: { color: t.textColor, fontSize: 10 } },
+        { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: theme.gridColor } }, axisLabel: { color: theme.textColor, fontSize: 10 } },
         subYAxis,
       ],
       dataZoom: [
@@ -244,7 +247,7 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
       series: [
         {
           name: "K", type: "candlestick", data: candle, xAxisIndex: 0, yAxisIndex: 0,
-          itemStyle: { color: t.upColor, color0: t.downColor, borderColor: t.upColor, borderColor0: t.downColor },
+          itemStyle: { color: theme.upColor, color0: theme.downColor, borderColor: theme.upColor, borderColor0: theme.downColor },
           markPoint: marks.length > 0 ? { data: marks, symbolSize: 28, tooltip: { formatter: (p: { name?: string; value?: string }) => p.name || p.value || "" } } : undefined,
         },
         ...overlaySeries,
@@ -252,10 +255,10 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
         ...subSeries,
       ],
     }, true);
-  }, [data, markers, baseData, indicatorCache, extraIndicators, sub, range, overlays, dark]);
+  }, [data, markers, baseData, indicatorCache, extraIndicators, sub, range, overlays, dark, t]);
 
   if (data.length === 0) {
-    return <div className="text-muted-foreground text-sm p-4">No price data</div>;
+    return <div className="text-muted-foreground text-sm p-4">{t("No price data")}</div>;
   }
 
   return (
@@ -264,7 +267,7 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
         {/* Time range */}
         <div className="flex gap-0.5">
           {(["1M", "3M", "6M", "1Y", "ALL"] as const).map((r) => (
-            <button key={r} onClick={() => setRange(r)} className={cn("px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors", range === r ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground/50 hover:text-muted-foreground")}>{r}</button>
+            <button key={r} onClick={() => setRange(r)} className={cn("px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors", range === r ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground/50 hover:text-muted-foreground")}>{t(r)}</button>
           ))}
         </div>
 
@@ -276,13 +279,13 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
             onClick={() => setShowMenu(!showMenu)}
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           >
-            Indicators ({overlays.size}) <ChevronDown className="h-3 w-3" />
+            {t("Indicators")} ({overlays.size}) <ChevronDown className="h-3 w-3" />
           </button>
           {showMenu && (
             <div className="absolute top-full left-0 mt-1 z-50 bg-card border rounded-lg shadow-lg p-2 min-w-[160px]" onMouseLeave={() => setShowMenu(false)}>
               {["MA", "Channel"].map(group => (
                 <div key={group}>
-                  <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider px-1 pt-1">{group}</p>
+                  <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider px-1 pt-1">{t(group)}</p>
                   {OVERLAY_OPTIONS.filter(o => o.group === group).map(o => (
                     <label key={o.id} className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/30 cursor-pointer">
                       <input type="checkbox" checked={overlays.has(o.id)} onChange={() => toggleOverlay(o.id)} className="h-3 w-3 rounded accent-primary" />
@@ -293,7 +296,7 @@ export function CandlestickChart({ data, markers, indicators, height = 500 }: Pr
               ))}
               <div className="border-t mt-1 pt-1">
                 <button onClick={() => { setOverlays(new Set()); setShowMenu(false); }} className="text-[10px] text-muted-foreground hover:text-foreground px-1 py-0.5 w-full text-left rounded hover:bg-muted/30">
-                  Bare K (clear all)
+                  {t("Bare K (clear all)")}
                 </button>
               </div>
             </div>

@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Bot, BarChart3, Zap, UserCircle2 } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 export function Home() {
+  const { t } = useI18n();
   const FEATURES = [
     { icon: Bot, title: "AI Agent", desc: "Natural language strategy generation with ReAct reasoning" },
     { icon: BarChart3, title: "Built-in Backtest", desc: "7 data sources across A-shares, US/HK & Crypto" },
@@ -12,13 +14,13 @@ export function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
       <div className="max-w-2xl text-center space-y-6">
-        <h1 className="text-4xl font-bold tracking-tight">AI-Powered Quant Strategy Research</h1>
-        <p className="text-lg text-muted-foreground">Describe a trading strategy in natural language. The agent generates code, runs backtests, and optimizes — all in real time.</p>
+        <h1 className="text-4xl font-bold tracking-tight">{t("AI-Powered Quant Strategy Research")}</h1>
+        <p className="text-lg text-muted-foreground">{t("Describe a trading strategy in natural language. The agent generates code, runs backtests, and optimizes — all in real time.")}</p>
         <Link
           to="/agent"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition"
         >
-          Start Research <ArrowRight className="h-4 w-4" />
+          {t("Start Research")} <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
 
@@ -26,8 +28,8 @@ export function Home() {
         {FEATURES.map(({ icon: Icon, title, desc }) => (
           <div key={title} className="border rounded-lg p-6 space-y-3">
             <Icon className="h-8 w-8 text-primary" />
-            <h3 className="font-semibold">{title}</h3>
-            <p className="text-sm text-muted-foreground">{desc}</p>
+            <h3 className="font-semibold">{t(title)}</h3>
+            <p className="text-sm text-muted-foreground">{t(desc)}</p>
           </div>
         ))}
       </div>

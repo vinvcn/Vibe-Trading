@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Circle, Loader2 } fro
 import { cn } from "@/lib/utils";
 import { localizeToolName } from "@/lib/tools";
 import type { AgentMessage } from "@/types/agent";
+import { useI18n } from "@/i18n";
 
 interface Props {
   messages: AgentMessage[];
@@ -10,11 +11,12 @@ interface Props {
 }
 
 export const ThinkingTimeline = memo(function ThinkingTimeline({ messages, isLatest = false }: Props) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(isLatest);
 
   const toolLabel = (tool?: string): string => {
-    if (!tool) return "Processing";
-    return localizeToolName(tool);
+    if (!tool) return t("Processing");
+    return t(localizeToolName(tool));
   };
 
   useEffect(() => {
@@ -52,12 +54,14 @@ export const ThinkingTimeline = memo(function ThinkingTimeline({ messages, isLat
       latestTool,
       latestThinking,
     };
-  }, [messages]);
+  }, [messages, t]);
 
   const stepCount = steps.length;
   const summaryText = isRunning
-    ? `Running ${toolLabel(latestTool)}...`
-    : `Done · ${stepCount} steps${totalMs > 0 ? ` · ${(totalMs / 1000).toFixed(1)}s` : ""}`;
+    ? t("Running {tool}...", { tool: toolLabel(latestTool) })
+    : totalMs > 0
+      ? t("Done · {steps} steps · {seconds}s", { steps: stepCount, seconds: (totalMs / 1000).toFixed(1) })
+      : t("Done · {steps} steps", { steps: stepCount });
 
   return (
     <div className="rounded-lg border border-border/40 bg-muted/5 overflow-hidden">
@@ -119,7 +123,7 @@ export const ThinkingTimeline = memo(function ThinkingTimeline({ messages, isLat
 
               {/* Duration or status */}
               {step.status === "running" ? (
-                <span className="text-[10px] text-primary/60">Running</span>
+                <span className="text-[10px] text-primary/60">{t("Running")}</span>
               ) : step.elapsed_ms != null ? (
                 <span className="text-[10px] text-muted-foreground/40 tabular-nums">{(step.elapsed_ms / 1000).toFixed(1)}s</span>
               ) : null}

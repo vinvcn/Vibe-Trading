@@ -4,6 +4,7 @@ import { getChartTheme } from "@/lib/chart-theme";
 import { abbreviateNum } from "@/lib/formatters";
 import { echarts, CHART_GROUP, connectCharts } from "@/lib/echarts";
 import { useDarkMode } from "@/hooks/useDarkMode";
+import { useI18n } from "@/i18n";
 
 interface Props {
   data: EquityPoint[];
@@ -13,10 +14,13 @@ interface Props {
 export function EquityChart({ data, height = 300 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const { dark } = useDarkMode();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!ref.current || data.length === 0) return;
-    const t = getChartTheme();
+    const theme = getChartTheme();
+    const equityLabel = t("Equity");
+    const drawdownLabel = t("Drawdown%");
     const chart = echarts.init(ref.current);
     chart.group = CHART_GROUP;
     connectCharts();
@@ -31,15 +35,15 @@ export function EquityChart({ data, height = 300 }: Props) {
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "cross" },
-        backgroundColor: t.tooltipBg,
-        borderColor: t.tooltipBorder,
-        textStyle: { color: t.tooltipText, fontSize: 11 },
+        backgroundColor: theme.tooltipBg,
+        borderColor: theme.tooltipBorder,
+        textStyle: { color: theme.tooltipText, fontSize: 11 },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         formatter: (params: any) => {
           if (!Array.isArray(params) || !params.length) return "";
           let html = `<b>${params[0].axisValue}</b>`;
           for (const p of params) {
-            const val = p.seriesName === "Drawdown%"
+            const val = p.seriesName === drawdownLabel
               ? `${p.value}%`
               : Number(p.value).toLocaleString();
             html += `<br/>${p.marker} ${p.seriesName}: <b>${val}</b>`;
@@ -49,52 +53,52 @@ export function EquityChart({ data, height = 300 }: Props) {
       },
       toolbox: {
         feature: {
-          saveAsImage: { title: "Save" },
-          restore: { title: "Reset" },
+          saveAsImage: { title: t("Save") },
+          restore: { title: t("Reset") },
         },
         right: 8, top: 0,
-        iconStyle: { borderColor: t.textColor },
+        iconStyle: { borderColor: theme.textColor },
       },
-      legend: { data: ["Equity", "Drawdown%"], textStyle: { color: t.textColor, fontSize: 11 }, right: 60, top: 4 },
+      legend: { data: [equityLabel, drawdownLabel], textStyle: { color: theme.textColor, fontSize: 11 }, right: 60, top: 4 },
       grid: [
         { left: 8, right: 8, top: 36, height: "56%", containLabel: true },
         { left: 8, right: 8, top: "68%", height: "20%", containLabel: true },
       ],
       xAxis: [
-        { type: "category", data: dates, gridIndex: 0, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { color: t.textColor, fontSize: 10 } },
-        { type: "category", data: dates, gridIndex: 1, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { show: false } },
+        { type: "category", data: dates, gridIndex: 0, axisLine: { lineStyle: { color: theme.axisColor } }, axisLabel: { color: theme.textColor, fontSize: 10 } },
+        { type: "category", data: dates, gridIndex: 1, axisLine: { lineStyle: { color: theme.axisColor } }, axisLabel: { show: false } },
       ],
       yAxis: [
         {
           type: "value", gridIndex: 0,
-          splitLine: { lineStyle: { color: t.gridColor } },
-          axisLabel: { color: t.textColor, fontSize: 10, formatter: (v: number) => abbreviateNum(v) },
+          splitLine: { lineStyle: { color: theme.gridColor } },
+          axisLabel: { color: theme.textColor, fontSize: 10, formatter: (v: number) => abbreviateNum(v) },
         },
         {
           type: "value", gridIndex: 1,
-          splitLine: { lineStyle: { color: t.gridColor } },
-          axisLabel: { color: t.textColor, fontSize: 10, formatter: "{value}%" },
+          splitLine: { lineStyle: { color: theme.gridColor } },
+          axisLabel: { color: theme.textColor, fontSize: 10, formatter: "{value}%" },
         },
       ],
       dataZoom: [{ type: "inside", xAxisIndex: [0, 1] }],
       series: [
         {
-          name: "Equity", type: "line", xAxisIndex: 0, yAxisIndex: 0,
+          name: equityLabel, type: "line", xAxisIndex: 0, yAxisIndex: 0,
           data: equity, smooth: false, symbol: "none",
-          lineStyle: { color: t.infoColor, width: 2 },
+          lineStyle: { color: theme.infoColor, width: 2 },
           areaStyle: {
-            color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: t.infoColor + "40" }, { offset: 1, color: t.infoColor + "00" }] },
+            color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: theme.infoColor + "40" }, { offset: 1, color: theme.infoColor + "00" }] },
           },
         },
         {
-          name: "Drawdown%", type: "line", xAxisIndex: 1, yAxisIndex: 1,
+          name: drawdownLabel, type: "line", xAxisIndex: 1, yAxisIndex: 1,
           data: drawdown, smooth: false, symbol: "none",
-          lineStyle: { color: t.downColor, width: 1 },
-          areaStyle: { color: t.downColor + "25" },
+          lineStyle: { color: theme.downColor, width: 1 },
+          areaStyle: { color: theme.downColor + "25" },
           markLine: {
             silent: true, symbol: "none",
-            data: [{ yAxis: minDD, label: { formatter: `Max DD: ${minDD}%`, position: "insideEndTop", fontSize: 10, color: t.downColor } }],
-            lineStyle: { color: t.downColor, type: "dashed", width: 1 },
+            data: [{ yAxis: minDD, label: { formatter: `${t("Max DD")}: ${minDD}%`, position: "insideEndTop", fontSize: 10, color: theme.downColor } }],
+            lineStyle: { color: theme.downColor, type: "dashed", width: 1 },
           },
         },
       ],
@@ -103,10 +107,10 @@ export function EquityChart({ data, height = 300 }: Props) {
     const ro = new ResizeObserver(() => chart.resize());
     ro.observe(ref.current!);
     return () => { ro.disconnect(); chart.dispose(); };
-  }, [data, dark]);
+  }, [data, dark, t]);
 
   if (data.length === 0) {
-    return <div className="text-muted-foreground text-sm p-4">No equity data</div>;
+    return <div className="text-muted-foreground text-sm p-4">{t("No equity data")}</div>;
   }
   return <div ref={ref} style={{ height }} />;
 }
